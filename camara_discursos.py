@@ -18,11 +18,14 @@ def makeDir(path) -> None:
         pass
 
 def request(url:str, params: Optional[dict] = None) -> json:
-    if params is None:
-        return requests.get(url, headers = {'Accept':'application/json'}).json()
-    else:
-        return requests.get(url, params, headers = {'Accept':'application/json'}).json()
-        
+    try:
+        if params is None:
+            return requests.get(url, headers = {'Accept':'application/json'}).json()
+        else:
+            return requests.get(url, params, headers = {'Accept':'application/json'}).json()
+    except:
+        print("Erro durante comunicação com a API")
+
 def next_page(data: json) -> str:
     if data['links'][1]['rel'] == 'next':
         return data['links'][1]['href']
@@ -37,20 +40,25 @@ def json_to_dataFrame(json_data: json, tag: str) -> pd.DataFrame:
         return df['id']
     elif tag == 'sumario':
         df = json_normalize(json_data['dados'], sep = ';')
-        df = df.drop(labels=['uri', 'uriPartido', 'idLegislatura', 'urlFoto', 'email'], axis=1, inplace=False, errors='raise')
+        df = df.drop(labels=['uri', 'uriPartido', 'urlFoto', 'email'], axis=1, inplace=False, errors='raise')
         print (df)
         return df
     else:
         return None
 
 def salvar_discurso(url, params, id):
-    res = request(url, params)
-    discursos = json_to_dataFrame(res, 'discursos')
-    while next_page(res) is not None:
-        res = request(next_page(res))
-        discursos = pd.concat([discursos, json_to_dataFrame(res, 'discursos')], axis=0)
-    discursos_csv = discursos.to_csv(os.path.join(SETUP['path_discursos'], str(SETUP['legislatura']), str(id)+'.csv'), sep = ';', encoding='utf-8', index=False)
-    return 1
+    try:
+        res = request(url, params)
+        discursos = json_to_dataFrame(res, 'discursos')
+        while next_page(res) is not None:
+            res = request(next_page(res))
+            discursos = pd.concat([discursos, json_to_dataFrame(res, 'discursos')], axis=0)
+        discursos_csv = discursos.to_csv(os.path.join(SETUP['path_discursos'], str(SETUP['legislatura']), str(id)+'.csv'), sep = ';', encoding='utf-8', index=False)
+    except:
+        print(f'Erro ao salvar discurso do deputado de id {id}')
+    else:
+        #criar arquivo de log
+        return 1
 
 def lista_id_deputados(res: json) -> pd.DataFrame:
     return json_to_dataFrame(res, 'id')
@@ -67,7 +75,7 @@ def deputados(legislatura: int) -> json:
 def deputados_sumario(res: json):
     try:
         sumario = json_to_dataFrame(res, 'sumario')
-        sumario.columns = ['Id', 'Nome', 'Partido', 'Estado']
+        sumario.columns = ['id', 'Nome', 'Partido', 'Estado', 'Legislatura']
         sumario = sumario.reindex(columns = sumario.columns.tolist() + ['Profissão','Quantidade discursos', 'checksum'])
         sumario_csv = sumario.to_csv(os.path.join(SETUP['path_sumario'], str(SETUP['legislatura'])+'.csv'), sep = ';', encoding='utf-8', index=False)
     except:
@@ -104,9 +112,12 @@ def main():
     dep = deputados(SETUP['legislatura'])
     deputados_sumario(dep)
     id = lista_id_deputados(dep)
-    
+    print('Baixando discursos...')
+
     for i in id:
         discursos(i, SETUP['legislatura'])
+        if i == (id[id.size-1]):
+            print('Discursos baixados com sucesso')
 
     #id = 178970
     #discursos(id, DADOS['legislatura'])
