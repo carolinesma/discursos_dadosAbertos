@@ -1,5 +1,3 @@
-from asyncio.windows_events import NULL
-from xmlrpc.client import DateTime
 import requests
 import json
 import os
@@ -7,16 +5,14 @@ import errno
 import csv
 import sys
 import time
-import datetime
-import hashlib
 import pandas as pd
 from pandas import json_normalize
 from typing import Optional
 
 PATH_DISCURSOS = 'Discursos'    #Nome da pasta para salvar os discursos
 PATH_SUMARIOS ='Sumários'       #Nome da pasta para salvar as informações dos deputados
-MAX_RETRIES = 2                 
-WAIT_SECONDS = 5
+MAX_RETRIES = 3                 
+WAIT_SECONDS = 10
 
 def makeDir(path) -> None:
     '''
@@ -63,6 +59,10 @@ def request(url:str, params: Optional[dict] = None) -> json:
                 return requests.get(url, params, headers = {'Accept':'application/json'}, timeout=10).json()
         except requests.exceptions.ConnectionError:
             print("Falha de comunicação com a API")
+        except requests.exceptions.Timeout:
+            print("Timeout")
+        except requests.exceptions.RequestException as e:
+            raise SystemExit(e)    
         time.sleep(WAIT_SECONDS)
     else: print("Todas as tentativas falharam")
 
@@ -130,14 +130,14 @@ def sumario(res: json, legislatura):
     else:    
         print('Sumário de deputados criado com sucesso')
 
-def sumario_update(path: str, new_columm: list, name: str):
+'''
+def sumario_update(path: str, new_columm: list):
     sumario = pd.read_csv(path, sep = ';')
     sumario.assign(name = new_columm)
     sumario.to_csv(os.path.join(path), sep = ';', encoding='utf-8', index=False)
-    
-def main():
-    dateTime_list = []
+'''
 
+def main():
     print('Digite o número da legislatura:')
     legislatura = int(sys.stdin.readline())
     
@@ -147,14 +147,12 @@ def main():
     dep = deputados(legislatura)    #Solicita a lista de deputados para a legislatura
     sumario(dep, legislatura)       #Trata e salva as informações dos deputados em um arquivo csv
     id = deputados_idList(dep)      #Criar uma lista com as ids de cada deputado
-    
+
     print('Baixando discursos...')
 
     for i in id:
-        discursos(i, legislatura)
-        dateTime_list.append(datetime.datetime.now())            
+        discursos(i, legislatura)          
     
-    sumario_update(os.path.join(PATH_SUMARIOS, str(legislatura)+'.csv'), dateTime_list, 'Datetime')
     print('Discursos baixados com sucesso')
 
 if __name__ == "__main__":
