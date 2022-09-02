@@ -132,12 +132,6 @@ def sumario(res: json, legislatura):
 
 def file_exist(path: str):
     return os.path.isfile(path)
-'''
-def sumario_update(path: str, new_columm: list):
-    sumario = pd.read_csv(path, sep = ';')
-    sumario.assign(name = new_columm)
-    sumario.to_csv(os.path.join(path), sep = ';', encoding='utf-8', index=False)
-'''
 
 def main():
     print('Digite o número da legislatura:')
