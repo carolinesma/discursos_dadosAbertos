@@ -39,7 +39,7 @@ def json_to_dataFrame(json_data: json, tag: str) -> pd.DataFrame:
         df = json_normalize(json_data['dados'], sep = ';')
         if df.empty:
             return df
-        else: return pd.concat([df['tipoDiscurso'], df['transcricao']], axis = 1, ignore_index=True)  
+        else: return pd.concat([df['dataHoraInicio'],df['keywords'], df['tipoDiscurso'], df['transcricao']], axis = 1, ignore_index=False)  
     elif tag == 'id':
         df = json_normalize(json_data['dados'], sep = ';')
         return df['id']
@@ -92,7 +92,7 @@ def discursos(id: int, legislatura: int) -> json:
 
 def discursos_save(url, params, id):
     for i in range(MAX_RETRIES):
-        try:
+        #try:
             res = request(url, params)
             discursos = json_to_dataFrame(res, 'discursos')
             if not discursos.empty:
@@ -102,9 +102,9 @@ def discursos_save(url, params, id):
             path = os.path.join(PATH_DISCURSOS, str(params['idLegislatura']), str(id)+'.csv')
             discursos.to_csv(path, sep = ';', encoding='utf-8', index=False)
             break
-        except:
-            print(f'Erro ao salvar discurso do deputado de id {id}')
-    else: print("Todas as tentativas falharam")
+        #except:
+            #print(f'Erro ao salvar discurso do deputado de id {id}')
+    #else: print("Todas as tentativas falharam")
     return 1
 
 def deputados(legislatura: int) -> json:
@@ -130,6 +130,8 @@ def sumario(res: json, legislatura):
     else:    
         print('Sumário de deputados criado com sucesso')
 
+def file_exist(path: str):
+    return os.path.isfile(path)
 '''
 def sumario_update(path: str, new_columm: list):
     sumario = pd.read_csv(path, sep = ';')
@@ -151,7 +153,8 @@ def main():
     print('Baixando discursos...')
 
     for i in id:
-        discursos(i, legislatura)          
+        if not file_exist(os.path.join(PATH_DISCURSOS, str(legislatura), str(i)+'.csv')):
+            discursos(i, legislatura)          
     
     print('Discursos baixados com sucesso')
 
