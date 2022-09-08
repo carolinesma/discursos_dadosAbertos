@@ -67,10 +67,12 @@ def request(url:str, params: Optional[dict] = None) -> json:
     else: print("Todas as tentativas falharam")
 
 def request_nextPage(data: json) -> str:
-    if data['links'][1]['rel'] == 'next':
-        return data['links'][1]['href']
-    else: return None
-
+    try:    
+        if data['links'][1]['rel'] == 'next':
+            return data['links'][1]['href']
+        else: return None
+    except IndexError:
+        return None
 def discursos(id: int, legislatura: int) -> json:
 
     params = {
@@ -92,7 +94,7 @@ def discursos(id: int, legislatura: int) -> json:
 
 def discursos_save(url, params, id):
     for i in range(MAX_RETRIES):
-        #try:
+        try:
             res = request(url, params)
             discursos = json_to_dataFrame(res, 'discursos')
             if not discursos.empty:
@@ -102,9 +104,9 @@ def discursos_save(url, params, id):
             path = os.path.join(PATH_DISCURSOS, str(params['idLegislatura']), str(id)+'.csv')
             discursos.to_csv(path, sep = ';', encoding='utf-8', index=False)
             break
-        #except:
-            #print(f'Erro ao salvar discurso do deputado de id {id}')
-    #else: print("Todas as tentativas falharam")
+        except:
+            print(f'Erro ao salvar discurso do deputado de id {id}')
+    else: print("Todas as tentativas falharam")
     return 1
 
 def deputados(legislatura: int) -> json:
